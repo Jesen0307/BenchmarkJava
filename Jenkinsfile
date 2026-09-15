@@ -16,7 +16,7 @@ pipeline {
             steps {
                 sh '''
                     sudo apt-get update
-                    sudo apt-get install -y python3 python3-pip python3-venv curl unzip docker.io default-jdk
+                    sudo apt-get install -y python3 python3-pip python3-venv curl unzip docker.io default-jdk maven
 
                     if [ ! -d "/usr/lib/jvm/java-17-temurin" ]; then
                         sudo mkdir -p /usr/lib/jvm/java-17-temurin
@@ -41,8 +41,8 @@ pipeline {
 
         stage('Build (Compile Java)') {
             steps {
-                sh 'chmod +x gradlew'
-                sh './gradlew classes printRuntimeClasspath --no-daemon'
+                sh 'mvn -B -DskipTests compile --no-transfer-progress'
+                sh 'mkdir -p build && mvn -B dependency:build-classpath -Dmdep.outputFile=build/runtimeClasspath.txt --no-transfer-progress'
             }
         }
 
