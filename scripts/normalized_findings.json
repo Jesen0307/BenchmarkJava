@@ -1,0 +1,10 @@
+{
+  "summary": {
+    "sonar_raw_count": 0,
+    "semgrep_raw_count": 0,
+    "sast_deduplicated_count": 0,
+    "batch_count": 0
+  },
+  "sast": [],
+  "triage_batches": []
+}
