@@ -41,8 +41,9 @@ pipeline {
 
         stage('Build (Compile Java)') {
             steps {
-                sh 'mvn -B -DskipTests compile --no-transfer-progress'
-                sh 'mkdir -p build && mvn -B dependency:build-classpath -Dmdep.outputFile=build/runtimeClasspath.txt --no-transfer-progress'
+                sh 'git fetch --unshallow || true; git fetch origin master:refs/remotes/origin/master || true'
+                sh 'mvn -B -DskipTests -Dspotless.apply.skip=true -Dspotless.check.skip=true compile --no-transfer-progress'
+                sh 'mkdir -p build && mvn -B -Dspotless.apply.skip=true -Dspotless.check.skip=true dependency:build-classpath -Dmdep.outputFile=build/runtimeClasspath.txt --no-transfer-progress'
             }
         }
 
