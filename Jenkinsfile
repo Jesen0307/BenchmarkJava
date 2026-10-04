@@ -7,7 +7,7 @@ pipeline {
         // so SonarQube is reachable by its Docker DNS name (stable, no hardcoded IP).
         SONAR_HOST_URL = 'http://sonarqube:9000'
         PATH = "/opt/sonar-scanner/bin:${env.PATH}"
-        SONAR_TOKEN = 'squ_a76c5e818a392cb07370af0fb874c9e3fe84ec90'
+        SONAR_TOKEN = credentials('sonar-token')
         SONAR_PROJECT_KEY = 'BenchmarkJava'
     }
 
@@ -51,24 +51,82 @@ pipeline {
             steps {
                 script {
                     sh 'mkdir -p $REPORTS_DIR'
+                    
+                    def semgrepFailed = false
 
                     parallel (
                         'Semgrep SAST': {
                             sh 'chmod +x scripts/semgrep-scan.sh'
-                            sh './scripts/semgrep-scan.sh . $REPORTS_DIR'
+                            def semgrepExitCode = sh(
+                                script: './scripts/semgrep-scan.sh . $REPORTS_DIR',
+                                returnStatus: true
+                            )
+                            if (semgrepExitCode != 0) {
+                                semgrepFailed = true
+                            }
                         },
                         'SonarQube Analysis': {
                             sh 'chmod +x scripts/sonarqube-scan.sh'
                             sh './scripts/sonarqube-scan.sh . $SONAR_PROJECT_KEY $SONAR_HOST_URL $SONAR_TOKEN $REPORTS_DIR'
                         }
                     )
+
+                    if (semgrepFailed) {
+                        env.SEMGREP_FAILED = 'true'
+                        echo "Semgrep found blocking vulnerabilities."
+                    } else {
+                        env.SEMGREP_FAILED = 'false'
+                    }
                 }
             }
         }
 
         stage('Deduplicate Findings') {
             steps {
-                sh 'python3 scripts/security_processor.py --workspace $REPORTS_DIR'
+                script {
+                    def sonarFailed = false
+
+                    def qgExitCode = sh(
+                        script: '''
+                            TIMEOUT=600
+                            ELAPSED=0
+                            INTERVAL=10
+                            STATUS="PENDING"
+
+                            while [ $ELAPSED -lt $TIMEOUT ]; do
+                                RESPONSE=$(curl -s -u "${SONAR_TOKEN}:" "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=${SONAR_PROJECT_KEY}")
+                                STATUS=$(echo "$RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('projectStatus', {}).get('status', 'PENDING'))" 2>/dev/null || echo "PENDING")
+
+                                if [ "$STATUS" = "OK" ] || [ "$STATUS" = "ERROR" ] || [ "$STATUS" = "WARN" ]; then
+                                    echo "SonarQube Quality Gate status: $STATUS"
+                                    break
+                                fi
+
+                                echo "Quality Gate status is $STATUS. Waiting for analysis computation..."
+                                sleep $INTERVAL
+                                ELAPSED=$((ELAPSED + INTERVAL))
+                            done
+
+                            if [ "$STATUS" != "OK" ]; then
+                                exit 1
+                            fi
+                        ''',
+                        returnStatus: true
+                    )
+
+                    if (qgExitCode != 0) {
+                        sonarFailed = true
+                        echo "SonarQube Quality Gate failed or timed out."
+                    } else {
+                        echo "SonarQube Quality Gate passed successfully."
+                    }
+
+                    sh 'python3 scripts/security_processor.py --workspace $REPORTS_DIR'
+
+                    if (env.SEMGREP_FAILED == 'true' || sonarFailed) {
+                        error("Pipeline failed due to security vulnerabilities or Quality Gate violations.")
+                    }
+                }
             }
         }
     }
