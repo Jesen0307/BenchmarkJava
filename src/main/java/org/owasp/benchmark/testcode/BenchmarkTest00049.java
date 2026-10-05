@@ -69,6 +69,6 @@ public class BenchmarkTest00049 extends HttpServlet {
         param = java.net.URLDecoder.decode(param, "UTF-8");
 
         response.setHeader("X-XSS-Protection", "0");
-        response.getWriter().write("Parameter value: " + param);
+        response.getWriter().write("Parameter value: " + organig.owasp.benchmark.helpers.Utils.encodeForHTML(param));
     }
 }
