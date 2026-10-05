@@ -8,6 +8,11 @@ and outputs a single normalized_findings.json optimized for LLM consumption.
 
 Usage:
     python3 scripts/security_processor.py [--workspace <dir>]
+
+Perubahan untuk eksperimen Benchmark (ditandai [BARU]/[UBAH]):
+  - kategori berbasis CWE dan kata kunci Java (kripto, hash, random, LDAP, XPath, cmdi, trust boundary)
+  - pemilihan kategori tidak lagi memilih "other" secara alfabetis ketika kategori lain tersedia
+  - CWE dibawa dari SonarQube (export_sonar.py) dan Semgrep (metadata) hingga ke keluaran
 """
 
 import argparse
@@ -36,8 +41,6 @@ def _normalize_path(file_path: str) -> str:
     'VulnBank:Dockerfile' -> 'Dockerfile')."""
     if ":" in file_path:
         prefix, rest = file_path.split(":", 1)
-        # Strip prefix if the remaining part looks like a file path
-        # (contains a dot, or is a known filename like Dockerfile)
         if "." in rest or rest.startswith(("Dockerfile", "Makefile", "Jenkinsfile")):
             return rest
     return file_path
@@ -46,6 +49,19 @@ def _normalize_path(file_path: str) -> str:
 # ---------------------------------------------------------------------------
 # Vulnerability category extraction — used to prevent merging unrelated vulns
 # ---------------------------------------------------------------------------
+# [BARU] CWE -> kategori (prioritas utama bila CWE tersedia; lebih andal daripada kata kunci)
+_CWE_CATEGORY = {
+    "89": "sql_injection", "79": "xss", "78": "command_injection", "22": "path_traversal",
+    "90": "ldap_injection", "643": "xpath_injection",
+    "328": "weak_hash", "327": "weak_crypto", "326": "weak_crypto",
+    "330": "weak_random", "338": "weak_random",
+    "614": "insecure_cookie", "1004": "insecure_cookie", "501": "trust_boundary",
+}
+# [BARU] urutan prioritas bila satu temuan memiliki beberapa kategori (yang lebih spesifik lebih dulu)
+_PRIORITY = ["sql_injection", "xss", "command_injection", "path_traversal", "ldap_injection",
+             "xpath_injection", "weak_hash", "weak_crypto", "weak_random", "insecure_cookie",
+             "trust_boundary"]
+
 _CATEGORY_KEYWORDS = {
     "sql_injection": ["sql", "injection", "tainted-sql", "generic-sql", "formatted-sql",
                        "sqlalchemy-execute", "db-cursor-execute"],
@@ -53,8 +69,15 @@ _CATEGORY_KEYWORDS = {
     "hardcoded_secret": ["hardcoded", "secret", "credential", "token-detected", "s6418"],
     "jwt": ["jwt", "pyjwt", "token", "auth"],
     "ssrf": ["ssrf", "server-side request", "tainted-flask-http"],
-    "insecure_cookie": ["cookie", "set-cookie", "samesite", "secure-flag"],
-    "weak_crypto": ["random", "prng", "pseudorandom", "s2245", "weak"],
+    "insecure_cookie": ["cookie", "set-cookie", "samesite", "secure-flag", "s2092", "s3330"],
+    # [UBAH] "weak_crypto" sebelumnya memuat kata kunci random; dipisah agar tidak bercampur
+    "weak_random": ["random", "prng", "pseudorandom", "s2245"],
+    "weak_hash": ["md5", "sha1", "sha-1", "s4790", "hash algorithm", "use-of-md5", "use-of-sha1"],
+    "weak_crypto": ["cipher", "des-is-deprecated", "desede", "s5542", "s5547", "s2278", "encryption"],
+    "command_injection": ["command-injection", "command injection", "os command", "s2076"],
+    "ldap_injection": ["ldap", "s2078"],
+    "xpath_injection": ["xpath", "s2091"],
+    "trust_boundary": ["trust boundary", "trust-boundary", "tainted-session"],
     "debug": ["debug", "debugger", "s4507"],
     "cors": ["cors", "s5122"],
     "csrf": ["csrf", "s4502", "s3752"],
@@ -67,8 +90,12 @@ _CATEGORY_KEYWORDS = {
 }
 
 
-def _classify_finding(rule_id: str, message: str) -> set[str]:
-    """Return set of category tags that match this finding."""
+def _classify_finding(rule_id: str, message: str, cwes=()) -> set[str]:
+    """Return set of category tags that match this finding.
+    [UBAH] CWE (bila ada) menentukan kategori; kata kunci menjadi cadangan."""
+    from_cwe = {_CWE_CATEGORY[c] for c in cwes if c in _CWE_CATEGORY}
+    if from_cwe:
+        return from_cwe
     text = f"{rule_id} {message}".lower()
     cats = set()
     for cat, keywords in _CATEGORY_KEYWORDS.items():
@@ -77,6 +104,16 @@ def _classify_finding(rule_id: str, message: str) -> set[str]:
                 cats.add(cat)
                 break
     return cats if cats else {"other"}
+
+
+def _pick_category(cats: set[str]) -> str:
+    """[BARU] Pilih satu kategori representatif. Kode lama memakai sorted(cats)[0], yang memilih
+    'other' secara alfabetis setiap kali tag 'other' ikut tergabung (mis. Sonar 'weak' + Semgrep tanpa
+    kata kunci), sehingga temuan kripto dan hash terkumpul pada 'other'."""
+    real = [c for c in cats if c != "other"]
+    if not real:
+        return "other"
+    return sorted(real, key=lambda c: (_PRIORITY.index(c) if c in _PRIORITY else len(_PRIORITY), c))[0]
 
 
 def _categories_overlap(cats_a: set[str], cats_b: set[str]) -> bool:
@@ -111,6 +148,7 @@ def parse_sonarqube(data) -> list[dict]:
                                       issue.get("impacts", [{}])[0].get("severity", "UNKNOWN")),
                 "rule_id": issue.get("rule", issue.get("key", "")),
                 "message": issue.get("message", ""),
+                "cwes": [str(c) for c in issue.get("cwes", [])],          # [BARU]
                 "_hotspot_key": None,
             })
 
@@ -119,12 +157,13 @@ def parse_sonarqube(data) -> list[dict]:
             items.append({
                 "tool": "SonarQube",
                 "file_path": _normalize_path(hs.get("component", "")),
-"line_number": hs.get("line")
+                "line_number": hs.get("line")
                                        or (hs.get("textRange") or {}).get("startLine")
                                        or 0,
-                "severity": hs.get("vulnerabilityProbability", "MEDIUM").upper(),
+                "severity": (hs.get("vulnerabilityProbability") or "MEDIUM").upper(),
                 "rule_id": hs.get("ruleKey", ""),
                 "message": hs.get("message", ""),
+                "cwes": [str(c) for c in hs.get("cwes", [])],             # [BARU]
                 "_hotspot_key": hs.get("key"),
             })
 
@@ -137,13 +176,14 @@ def parse_sonarqube(data) -> list[dict]:
             "severity": item["severity"],
             "rule_id": item["rule_id"],
             "message": item["message"],
+            "cwes": item.get("cwes", []),
             "_hotspot_key": item.get("_hotspot_key"),
         })
     return out
 
 
 # ---------------------------------------------------------------------------
-# Semgrep — expects `results` array from `semgrep ci --json`
+# Semgrep — expects `results` array from `semgrep scan --json`
 # ---------------------------------------------------------------------------
 def parse_semgrep(data) -> list[dict]:
     if not data:
@@ -151,6 +191,10 @@ def parse_semgrep(data) -> list[dict]:
     results = data.get("results", []) if isinstance(data, dict) else data
     out = []
     for r in results:
+        meta = r.get("extra", {}).get("metadata", {}) or {}               # [BARU] CWE dari metadata aturan
+        cw = meta.get("cwe", [])
+        cw = cw if isinstance(cw, list) else [cw]
+        cwes = sorted(set(re.findall(r"CWE-(\d+)", " ".join(map(str, cw)))))
         out.append({
             "tool": "Semgrep",
             "file_path": r.get("path", ""),
@@ -158,6 +202,7 @@ def parse_semgrep(data) -> list[dict]:
             "severity": r.get("extra", {}).get("severity", "UNKNOWN"),
             "rule_id": r.get("check_id", ""),
             "message": r.get("extra", {}).get("message", ""),
+            "cwes": cwes,
         })
     return out
 
@@ -172,12 +217,8 @@ def deduplicate_sast(findings: list[dict]) -> list[dict]:
     findings_sorted = sorted(findings, key=lambda f: (f["file_path"], f["line_number"]))
     merged: list[dict] = []
 
-    # Track best representative per (rule_id, file_path) cluster to add
-    # rule_cluster_id after merging.
-    cluster_map: dict[tuple[str, str], dict] = {}
-
     for f in findings_sorted:
-        f_cats = _classify_finding(f["rule_id"], f["message"])
+        f_cats = _classify_finding(f["rule_id"], f["message"], f.get("cwes", []))
         attached = False
         for m in merged:
             if m["file_path"] != f["file_path"]:
@@ -198,7 +239,8 @@ def deduplicate_sast(findings: list[dict]) -> list[dict]:
             if _sev_rank(f["severity"]) > _sev_rank(m["severity"]):
                 m["severity"] = f["severity"]
             m["_categories"] |= f_cats
-            
+            m["_cwes"] |= set(f.get("cwes", []))                          # [BARU]
+
             # Carry hotspot key if present
             if f.get("_hotspot_key") and f["_hotspot_key"] not in m.get("_hotspot_keys", []):
                 m.setdefault("_hotspot_keys", []).append(f["_hotspot_key"])
@@ -215,17 +257,15 @@ def deduplicate_sast(findings: list[dict]) -> list[dict]:
                 "detected_by": [f["tool"]],
                 "category": "SAST",
                 "_categories": f_cats,
+                "_cwes": set(f.get("cwes", [])),                          # [BARU]
                 "_hotspot_keys": [f["_hotspot_key"]] if f.get("_hotspot_key") else [],
             })
 
     # Strip internal fields before returning
     for m in merged:
         cats = m.pop("_categories", set())
-        # Persist a human-readable category for batch triage.
-        m["category"] = sorted(cats)[0] if cats else "other"
-        # rule_cluster_id groups findings by (rule_id, file_path) so the
-        # triage phase can batch representative reviews without merging
-        # findings that differ in context.
+        m["category"] = _pick_category(cats)                              # [UBAH]
+        m["cwes"] = sorted(m.pop("_cwes", set()), key=int)                # [BARU]
         rule = m["rule_ids"][0] if m.get("rule_ids") else "unknown"
         m["rule_cluster_id"] = f"{m['file_path']}::{rule}"
         keys = m.pop("_hotspot_keys", [])
@@ -244,14 +284,8 @@ def _sev_rank(sev: str) -> int:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def detect_syntax() -> None:
-    """No-op: py_compile runs at import in __main__ guard."""
-    pass
-
-
 def build_batches(findings: list[dict], max_per_batch: int = 100) -> list[dict]:
-    """Group deduplicated findings into category-based batches for triage.
-    """
+    """Group deduplicated findings into category-based batches for triage."""
     from collections import defaultdict
     by_cat: dict[str, list[dict]] = defaultdict(list)
     for f in findings:
@@ -276,10 +310,9 @@ def main():
     parser = argparse.ArgumentParser(description="Normalize & deduplicate security findings")
     parser.add_argument("--workspace", default=".", help="Workspace root containing scanner outputs")
     parser.add_argument("--max-batch", type=int, default=15,
-                        help="Max findings per triage batch (default 100)")
+                        help="Max findings per triage batch (default 15)")
     args = parser.parse_args()
     ws = Path(args.workspace)
-    # ws = Path("/mnt/d/Work/Testing/VulnerableApp/java-security-reports")  # Hardcoded for testing
     sonar_data = load_json(ws / "sonar_raw.json")
     semgrep_data = load_json(ws / "semgrep_raw_output.json")
 
