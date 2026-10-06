@@ -60,7 +60,7 @@ public class BenchmarkTest00140 extends HttpServlet {
             bar = valuesList.get(0); // get the param value
         }
 
-        double value = java.lang.new java.security.SecureRandom().nextDouble();
+        double value = new java.security.SecureRandom().nextDouble();
         String rememberMeKey = Double.toString(value).substring(2); // Trim off the 0. at the front.
 
         String user = "Doug";
@@ -107,6 +107,6 @@ public class BenchmarkTest00140 extends HttpServlet {
                                     + rememberMe.getValue()
                                     + "<br/>");
         }
-        response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Weak Randomness Test java.lang.new java.security.SecureRandom().nextDouble() executed");
+        response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Weak Randomness Test new java.security.SecureRandom().nextDouble() executed");
     }
 }

@@ -86,7 +86,7 @@ public class BenchmarkTest00067 extends HttpServlet {
         String g71153 = "barbarians_at_the_gate"; // This is static so this whole flow is 'safe'
         String bar = thing.doSomething(g71153); // reflection
 
-        double value = java.lang.new java.security.SecureRandom().nextDouble();
+        double value = new java.security.SecureRandom().nextDouble();
         String rememberMeKey = Double.toString(value).substring(2); // Trim off the 0. at the front.
 
         String user = "Doug";
@@ -133,6 +133,6 @@ public class BenchmarkTest00067 extends HttpServlet {
                                     + rememberMe.getValue()
                                     + "<br/>");
         }
-        response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Weak Randomness Test java.lang.new java.security.SecureRandom().nextDouble() executed");
+        response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Weak Randomness Test java.security.SecureRandom().nextDouble() executed"));
     }
 }
