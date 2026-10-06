@@ -48,7 +48,7 @@ public class BenchmarkTest00123 extends HttpServlet {
         // URL Decode the header value since req.getHeader() doesn't. Unlike req.getParameter().
         param = java.net.URLDecoder.decode(param, "UTF-8");
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         // Code based on example from:
         // http://examples.javacodegeeks.com/core-java/crypto/encrypt-decrypt-file-stream-with-des/

@@ -44,7 +44,7 @@ public class BenchmarkTest00914 extends HttpServlet {
                 new org.owasp.benchmark.helpers.SeparateClassRequest(request);
         String param = scr.getTheValue("BenchmarkTest00914");
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         try {
             java.util.Random numGen = java.security.SecureRandom.getInstance("SHA1PRNG");

@@ -67,7 +67,7 @@ public class BenchmarkTest00781 extends HttpServlet {
         }
         param = java.net.URLDecoder.decode(param, "UTF-8");
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         // Code based on example from:
         // http://examples.javacodegeeks.com/core-java/crypto/encrypt-decrypt-file-stream-with-des/

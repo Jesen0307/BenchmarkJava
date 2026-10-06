@@ -86,7 +86,7 @@ public class BenchmarkTest01132 extends HttpServlet {
         }
 
         if (foundUser) {
-            response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Welcome back: " + user + "<br/>");
+            response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Welcome back: " + user + "<br/>"));
         } else {
             javax.servlet.http.Cookie rememberMe =
                     new javax.servlet.http.Cookie(cookieName, rememberMeKey);

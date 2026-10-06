@@ -57,7 +57,7 @@ public class BenchmarkTest00565 extends HttpServlet {
             }
         }
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         byte[] input = new byte[1000];
         String str = "?";

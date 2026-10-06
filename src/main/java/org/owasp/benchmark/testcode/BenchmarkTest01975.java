@@ -165,7 +165,7 @@ public class BenchmarkTest01975 extends HttpServlet {
     private static String doSomething(HttpServletRequest request, String param)
             throws ServletException, IOException {
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         return bar;
     }

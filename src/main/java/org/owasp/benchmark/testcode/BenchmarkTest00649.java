@@ -45,7 +45,7 @@ public class BenchmarkTest00649 extends HttpServlet {
         String param = scr.getTheParameter("BenchmarkTest00649");
         if (param == null) param = "";
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         response.setHeader("X-XSS-Protection", "0");
         response.getWriter().write(bar.toCharArray());

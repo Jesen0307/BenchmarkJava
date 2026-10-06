@@ -45,7 +45,7 @@ public class BenchmarkTest00668 extends HttpServlet {
         String param = scr.getTheParameter("BenchmarkTest00668");
         if (param == null) param = "";
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         // javax.servlet.http.HttpSession.putValue(java.lang.String^,java.lang.Object)
         request.getSession().putValue(bar, "10340");

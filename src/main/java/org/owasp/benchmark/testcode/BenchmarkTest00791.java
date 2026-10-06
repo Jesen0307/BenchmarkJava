@@ -67,7 +67,7 @@ public class BenchmarkTest00791 extends HttpServlet {
         }
         param = java.net.URLDecoder.decode(param, "UTF-8");
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         try {
             java.security.MessageDigest md =

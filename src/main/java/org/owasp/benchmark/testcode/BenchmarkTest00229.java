@@ -58,7 +58,7 @@ public class BenchmarkTest00229 extends HttpServlet {
         }
         // Note: We don't URL decode header names because people don't normally do that
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         try {
             java.util.Properties benchmarkprops = new java.util.Properties();

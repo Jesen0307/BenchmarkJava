@@ -47,7 +47,7 @@ public class BenchmarkTest00504 extends HttpServlet {
             if (values != null) param = values[0];
         }
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         try {
             float rand = java.security.SecureRandom.getInstance("SHA1PRNG").nextFloat();

@@ -50,7 +50,7 @@ public class BenchmarkTest00321 extends HttpServlet {
         // URL Decode the header value since req.getHeaders() doesn't. Unlike req.getParameters().
         param = java.net.URLDecoder.decode(param, "UTF-8");
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         // javax.servlet.http.HttpSession.putValue(java.lang.String^,java.lang.Object)
         request.getSession().putValue(bar, "10340");

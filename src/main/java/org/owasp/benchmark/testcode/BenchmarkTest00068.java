@@ -70,7 +70,7 @@ public class BenchmarkTest00068 extends HttpServlet {
 
         bar = (7 * 18) + num > 200 ? "This_should_always_happen" : param;
 
-        double value = java.lang.new java.security.SecureRandom().nextDouble();
+        double value = new java.security.SecureRandom().nextDouble();
         String rememberMeKey = Double.toString(value).substring(2); // Trim off the 0. at the front.
 
         String user = "Doug";
@@ -96,7 +96,7 @@ public class BenchmarkTest00068 extends HttpServlet {
         }
 
         if (foundUser) {
-            response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Welcome back: " + user + "<br/>");
+            response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Welcome back: " + user + "<br/>"));
 
         } else {
             javax.servlet.http.Cookie rememberMe =

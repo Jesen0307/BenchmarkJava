@@ -47,7 +47,7 @@ public class BenchmarkTest00463 extends HttpServlet {
             if (values != null) param = values[0];
         }
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         java.security.Provider[] provider = java.security.Security.getProviders();
         java.security.MessageDigest md;

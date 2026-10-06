@@ -58,7 +58,7 @@ public class BenchmarkTest02528 extends HttpServlet {
 
         } catch (java.sql.SQLException e) {
             if (org.owasp.benchmark.helpers.DatabaseHelper.hideSQLErrors) {
-                response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Error processing request.");
+                response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Error processing request."));
             } else throw new ServletException(e);
         }
     } // end doPost

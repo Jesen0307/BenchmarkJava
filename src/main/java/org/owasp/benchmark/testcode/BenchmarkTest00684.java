@@ -45,7 +45,7 @@ public class BenchmarkTest00684 extends HttpServlet {
         if (values != null && values.length > 0) param = values[0];
         else param = "";
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         // Code based on example from:
         // http://examples.javacodegeeks.com/core-java/crypto/encrypt-decrypt-file-stream-with-des/

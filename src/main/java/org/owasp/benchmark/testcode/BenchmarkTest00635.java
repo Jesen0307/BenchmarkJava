@@ -45,7 +45,7 @@ public class BenchmarkTest00635 extends HttpServlet {
         String param = scr.getTheParameter("BenchmarkTest00635");
         if (param == null) param = "";
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA1", "SUN");

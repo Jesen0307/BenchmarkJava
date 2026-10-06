@@ -45,7 +45,7 @@ public class BenchmarkTest00616 extends HttpServlet {
         String param = scr.getTheParameter("BenchmarkTest00616");
         if (param == null) param = "";
 
-        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param);
+        String bar = org.owasp.esapi.ESAPI.encoder().encodeForHTML(param));
 
         try {
             java.util.Properties benchmarkprops = new java.util.Properties();
