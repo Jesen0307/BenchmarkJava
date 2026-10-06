@@ -53,7 +53,7 @@ public class BenchmarkTest02055 extends HttpServlet {
         String bar = doSomething(request, param);
 
         response.setHeader("X-XSS-Protection", "0");
-        response.getWriter().println(bar.toCharArray());
+        response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML(bar.toCharArray());
     } // end doPost
 
     private static String doSomething(HttpServletRequest request, String param)

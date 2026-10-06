@@ -53,6 +53,6 @@ public class BenchmarkTest00390 extends HttpServlet {
         }
 
         response.setHeader("X-XSS-Protection", "0");
-        response.getWriter().println(bar);
+        response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML(bar));
     }
 }

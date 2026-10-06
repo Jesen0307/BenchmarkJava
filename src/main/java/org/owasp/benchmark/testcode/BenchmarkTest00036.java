@@ -62,7 +62,11 @@ public class BenchmarkTest00036 extends HttpServlet {
         int length = 1;
         if (param != null) {
             length = param.length();
-            response.getWriter().write(org.owasp.benchmark.helpers.Utils.encodeForHTML(param).toCharArray(), 0, length);
+            response.getWriter()
+                    .write(
+                            org.owasp.benchmark.helpers.Utils.encodeForHTML(param).toCharArray(),
+                            0,
+                            length);
         }
     }
 }

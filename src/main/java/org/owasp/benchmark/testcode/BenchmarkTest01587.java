@@ -49,7 +49,10 @@ public class BenchmarkTest01587 extends HttpServlet {
 
         response.setHeader("X-XSS-Protection", "0");
         Object[] obj = {"a", "b"};
-        response.getWriter().printf(java.util.Locale.US, bar, obj);
+        response.getWriter()
+                .printf(
+                        org.owasp.benchmark.helpers.Utils.encodeForHTML(
+                                java.util.Locale.US, bar, obj));
     } // end doPost
 
     private class Test {

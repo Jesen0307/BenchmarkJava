@@ -51,6 +51,6 @@ public class BenchmarkTest00387 extends HttpServlet {
         bar = (7 * 42) - num > 200 ? "This should never happen" : param;
 
         response.setHeader("X-XSS-Protection", "0");
-        response.getWriter().println(bar.toCharArray());
+        response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML(bar.toCharArray());
     }
 }

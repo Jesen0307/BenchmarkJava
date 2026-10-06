@@ -96,7 +96,7 @@ public class BenchmarkTest00086 extends HttpServlet {
         }
 
         if (foundUser) {
-            response.getWriter().println("Welcome back: " + user + "<br/>");
+            response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Welcome back: " + user + "<br/>");
 
         } else {
             javax.servlet.http.Cookie rememberMe =
@@ -117,6 +117,6 @@ public class BenchmarkTest00086 extends HttpServlet {
                                     + "<br/>");
         }
 
-        response.getWriter().println("Weak Randomness Test java.util.Random.nextLong() executed");
+        response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Weak Randomness Test java.util.Random.nextLong() executed");
     }
 }

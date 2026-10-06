@@ -51,7 +51,10 @@ public class BenchmarkTest02224 extends HttpServlet {
 
         response.setHeader("X-XSS-Protection", "0");
         Object[] obj = {"a", bar};
-        response.getWriter().format("Formatted like: %1$s and %2$s.", obj);
+        response.getWriter()
+                .format(
+                        org.owasp.benchmark.helpers.Utils.encodeForHTML(
+                                "Formatted like: %1$s and %2$s.", obj));
     } // end doPost
 
     private static String doSomething(HttpServletRequest request, String param)
