@@ -70,7 +70,7 @@ public class BenchmarkTest00085 extends HttpServlet {
         map43974.put("keyC", "another-Value"); // put some stuff in the collection
         bar = (String) map43974.get("keyB-43974"); // get it back out
 
-        long l = new java.util.Random().nextLong();
+        long l = new java.security.SecureRandom().nextLong();
         String rememberMeKey = Long.toString(l);
 
         String user = "Logan";

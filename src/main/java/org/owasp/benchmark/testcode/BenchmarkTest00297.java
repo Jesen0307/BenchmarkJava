@@ -54,7 +54,7 @@ public class BenchmarkTest00297 extends HttpServlet {
                 org.owasp.benchmark.helpers.ThingFactory.createThing();
         String bar = thing.doSomething(param);
 
-        double stuff = new java.util.Random().nextGaussian();
+        double stuff = new java.security.SecureRandom().nextGaussian();
         String rememberMeKey = Double.toString(stuff).substring(2); // Trim off the 0. at the front.
 
         String user = "Gayle";

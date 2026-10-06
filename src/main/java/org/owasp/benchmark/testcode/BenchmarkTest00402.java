@@ -49,7 +49,7 @@ public class BenchmarkTest00402 extends HttpServlet {
             bar = sbxyz11630.replace(param.length() - "Z".length(), param.length(), "Z").toString();
         }
 
-        int r = new java.util.Random().nextInt();
+        int r = new java.security.SecureRandom().nextInt();
         String rememberMeKey = Integer.toString(r);
 
         String user = "Ingrid";

@@ -66,7 +66,7 @@ public class BenchmarkTest00399 extends HttpServlet {
         String g78565 = "barbarians_at_the_gate"; // This is static so this whole flow is 'safe'
         String bar = thing.doSomething(g78565); // reflection
 
-        double value = new java.util.Random().nextDouble();
+        double value = new java.security.SecureRandom().nextDouble();
         String rememberMeKey = Double.toString(value).substring(2); // Trim off the 0. at the front.
 
         String user = "Donna";

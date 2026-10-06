@@ -54,7 +54,7 @@ public class BenchmarkTest00898 extends HttpServlet {
         }
 
         byte[] bytes = new byte[10];
-        new java.util.Random().nextBytes(bytes);
+        new java.security.SecureRandom().nextBytes(bytes);
         String rememberMeKey = org.owasp.esapi.ESAPI.encoder().encodeForBase64(bytes, true);
 
         String user = "Byron";

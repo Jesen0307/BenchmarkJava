@@ -66,7 +66,7 @@ public class BenchmarkTest00234 extends HttpServlet {
         bar = (String) map35995.get("keyB-35995"); // get it back out
         bar = (String) map35995.get("keyA-35995"); // get safe value back out
 
-        int randNumber = new java.util.Random().nextInt(99);
+        int randNumber = new java.security.SecureRandom().nextInt(99);
         String rememberMeKey = Integer.toString(randNumber);
 
         String user = "Inga";

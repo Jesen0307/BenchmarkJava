@@ -70,7 +70,7 @@ public class BenchmarkTest00079 extends HttpServlet {
         map18384.put("keyC", "another-Value"); // put some stuff in the collection
         bar = (String) map18384.get("keyB-18384"); // get it back out
 
-        float rand = new java.util.Random().nextFloat();
+        float rand = new java.security.SecureRandom().nextFloat();
         String rememberMeKey = Float.toString(rand).substring(2); // Trim off the 0. at the front.
 
         String user = "Floyd";

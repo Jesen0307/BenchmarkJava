@@ -80,7 +80,7 @@ public class BenchmarkTest00239 extends HttpServlet {
                 org.owasp.benchmark.helpers.ThingFactory.createThing();
         String bar = thing.doSomething(f22450); // reflection
 
-        long l = new java.util.Random().nextLong();
+        long l = new java.security.SecureRandom().nextLong();
         String rememberMeKey = Long.toString(l);
 
         String user = "Logan";

@@ -72,7 +72,7 @@ public class BenchmarkTest00818 extends HttpServlet {
             bar = param.substring(0, param.length() - 1);
         }
 
-        float rand = new java.util.Random().nextFloat();
+        float rand = new java.security.SecureRandom().nextFloat();
         String rememberMeKey = Float.toString(rand).substring(2); // Trim off the 0. at the front.
 
         String user = "Floyd";

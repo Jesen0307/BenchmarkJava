@@ -65,7 +65,7 @@ public class BenchmarkTest00231 extends HttpServlet {
         map59585.put("keyC", "another-Value"); // put some stuff in the collection
         bar = (String) map59585.get("keyB-59585"); // get it back out
 
-        double stuff = new java.util.Random().nextGaussian();
+        double stuff = new java.security.SecureRandom().nextGaussian();
         String rememberMeKey = Double.toString(stuff).substring(2); // Trim off the 0. at the front.
 
         String user = "Gayle";

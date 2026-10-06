@@ -70,7 +70,7 @@ public class BenchmarkTest00083 extends HttpServlet {
         if ((500 / 42) + num > 200) bar = param;
         else bar = "This should never happen";
 
-        int randNumber = new java.util.Random().nextInt(99);
+        int randNumber = new java.security.SecureRandom().nextInt(99);
         String rememberMeKey = Integer.toString(randNumber);
 
         String user = "Inga";

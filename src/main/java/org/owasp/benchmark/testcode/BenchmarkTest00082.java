@@ -66,7 +66,7 @@ public class BenchmarkTest00082 extends HttpServlet {
         StringBuilder sbxyz58640 = new StringBuilder(param);
         String bar = sbxyz58640.append("_SafeStuff").toString();
 
-        int randNumber = new java.util.Random().nextInt(99);
+        int randNumber = new java.security.SecureRandom().nextInt(99);
         String rememberMeKey = Integer.toString(randNumber);
 
         String user = "Inga";

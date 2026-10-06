@@ -51,7 +51,7 @@ public class BenchmarkTest00398 extends HttpServlet {
         bar = (String) map43631.get("keyB-43631"); // get it back out
         bar = (String) map43631.get("keyA-43631"); // get safe value back out
 
-        double value = new java.util.Random().nextDouble();
+        double value = new java.security.SecureRandom().nextDouble();
         String rememberMeKey = Double.toString(value).substring(2); // Trim off the 0. at the front.
 
         String user = "Donna";

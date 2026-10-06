@@ -59,7 +59,7 @@ public class BenchmarkTest00563 extends HttpServlet {
 
         String bar = param;
 
-        int r = new java.util.Random().nextInt();
+        int r = new java.security.SecureRandom().nextInt();
         String rememberMeKey = Integer.toString(r);
 
         String user = "Ingrid";

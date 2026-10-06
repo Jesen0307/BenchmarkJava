@@ -46,7 +46,7 @@ public class BenchmarkTest01782 extends HttpServlet {
 
         String bar = new Test().doSomething(request, param);
 
-        double stuff = new java.util.Random().nextGaussian();
+        double stuff = new java.security.SecureRandom().nextGaussian();
         String rememberMeKey = Double.toString(stuff).substring(2); // Trim off the 0. at the front.
 
         String user = "Gayle";
