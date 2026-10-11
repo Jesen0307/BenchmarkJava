@@ -86,11 +86,12 @@ public class BenchmarkTest00110 extends HttpServlet {
         String g69840 = "barbarians_at_the_gate"; // This is static so this whole flow is 'safe'
         String bar = thing.doSomething(g69840); // reflection
 
-        String sql = "SELECT * from USERS where USERNAME='foo' and PASSWORD='" + bar + "'";
+        String sql = "SELECT * from USERS where USERNAME='foo' and PASSWORD=?";
 
         try {
-            java.sql.Statement statement =
-                    org.owasp.benchmark.helpers.DatabaseHelper.getSqlStatement();
+            java.sql.PreparedStatement statement =
+                    org.owasp.benchmark.helpers.DatabaseHelper.getSqlConnection().prepareStatement(sql);
+            statement.setString(1, bar);
             statement.execute(sql, new String[] {"username", "password"});
             org.owasp.benchmark.helpers.DatabaseHelper.printResults(statement, sql, response);
         } catch (java.sql.SQLException e) {

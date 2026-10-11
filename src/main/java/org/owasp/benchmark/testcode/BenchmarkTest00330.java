@@ -73,12 +73,13 @@ public class BenchmarkTest00330 extends HttpServlet {
         String g55109 = "barbarians_at_the_gate"; // This is static so this whole flow is 'safe'
         String bar = thing.doSomething(g55109); // reflection
 
-        String sql = "{call " + bar + "}";
+        String sql = "{call ?}";
 
         try {
             java.sql.Connection connection =
                     org.owasp.benchmark.helpers.DatabaseHelper.getSqlConnection();
             java.sql.CallableStatement statement = connection.prepareCall(sql);
+            statement.setString(1, bar);
             java.sql.ResultSet rs = statement.executeQuery();
             org.owasp.benchmark.helpers.DatabaseHelper.printResults(rs, sql, response);
 

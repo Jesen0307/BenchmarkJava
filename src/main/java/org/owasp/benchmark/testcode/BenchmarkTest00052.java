@@ -45,7 +45,7 @@ public class BenchmarkTest00052 extends HttpServlet {
                 new org.owasp.benchmark.helpers.SeparateClassRequest(request);
         String param = scr.getTheValue("BenchmarkTest00052");
 
-        String sql = "{call " + param + "}";
+        String sql = "{call ?}";
 
         try {
             java.sql.Connection connection =
@@ -56,6 +56,7 @@ public class BenchmarkTest00052 extends HttpServlet {
                             java.sql.ResultSet.TYPE_FORWARD_ONLY,
                             java.sql.ResultSet.CONCUR_READ_ONLY,
                             java.sql.ResultSet.CLOSE_CURSORS_AT_COMMIT);
+            statement.setString(1, param);
             java.sql.ResultSet rs = statement.executeQuery();
             org.owasp.benchmark.helpers.DatabaseHelper.printResults(rs, sql, response);
         } catch (java.sql.SQLException e) {

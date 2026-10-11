@@ -75,7 +75,7 @@ public class BenchmarkTest00837 extends HttpServlet {
         bar = (String) map5936.get("keyB-5936"); // get it back out
         bar = (String) map5936.get("keyA-5936"); // get safe value back out
 
-        String sql = "{call " + bar + "}";
+        String sql = "{call ?}";
 
         try {
             java.sql.Connection connection =
@@ -86,6 +86,7 @@ public class BenchmarkTest00837 extends HttpServlet {
                             java.sql.ResultSet.TYPE_FORWARD_ONLY,
                             java.sql.ResultSet.CONCUR_READ_ONLY,
                             java.sql.ResultSet.CLOSE_CURSORS_AT_COMMIT);
+            statement.setString(1, bar);
             java.sql.ResultSet rs = statement.executeQuery();
             org.owasp.benchmark.helpers.DatabaseHelper.printResults(rs, sql, response);
         } catch (java.sql.SQLException e) {

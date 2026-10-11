@@ -52,12 +52,13 @@ public class BenchmarkTest00760 extends HttpServlet {
         map18915.put("keyC", "another-Value"); // put some stuff in the collection
         bar = (String) map18915.get("keyB-18915"); // get it back out
 
-        String sql = "{call " + bar + "}";
+        String sql = "{call ?}";
 
         try {
             java.sql.Connection connection =
                     org.owasp.benchmark.helpers.DatabaseHelper.getSqlConnection();
             java.sql.CallableStatement statement = connection.prepareCall(sql);
+            statement.setString(1, bar);
             java.sql.ResultSet rs = statement.executeQuery();
             org.owasp.benchmark.helpers.DatabaseHelper.printResults(rs, sql, response);
 

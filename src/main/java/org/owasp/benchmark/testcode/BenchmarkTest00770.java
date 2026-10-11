@@ -57,12 +57,13 @@ public class BenchmarkTest00770 extends HttpServlet {
             bar = valuesList.get(0); // get the param value
         }
 
-        String sql = "SELECT * from USERS where USERNAME='foo' and PASSWORD='" + bar + "'";
+        String sql = "SELECT * from USERS where USERNAME='foo' and PASSWORD=?";
 
         try {
-            java.sql.Statement statement =
-                    org.owasp.benchmark.helpers.DatabaseHelper.getSqlStatement();
-            statement.addBatch(sql);
+            java.sql.PreparedStatement statement =
+                    org.owasp.benchmark.helpers.DatabaseHelper.getSqlConnection().prepareStatement(sql);
+            statement.setString(1, bar);
+            statement.addBatch();
             int[] counts = statement.executeBatch();
             org.owasp.benchmark.helpers.DatabaseHelper.printResults(sql, counts, response);
         } catch (java.sql.SQLException e) {

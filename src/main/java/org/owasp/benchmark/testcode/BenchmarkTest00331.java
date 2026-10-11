@@ -58,12 +58,13 @@ public class BenchmarkTest00331 extends HttpServlet {
         bar = (String) map59781.get("keyB-59781"); // get it back out
         bar = (String) map59781.get("keyA-59781"); // get safe value back out
 
-        String sql = "SELECT * from USERS where USERNAME=? and PASSWORD='" + bar + "'";
+        String sql = "SELECT * from USERS where USERNAME=? and PASSWORD=?";
 
         try {
             java.sql.Connection connection =
                     org.owasp.benchmark.helpers.DatabaseHelper.getSqlConnection();
             java.sql.PreparedStatement statement = connection.prepareStatement(sql);
+            statement.setString(2, bar);
             statement.setString(1, "foo");
             statement.execute();
             org.owasp.benchmark.helpers.DatabaseHelper.printResults(statement, sql, response);

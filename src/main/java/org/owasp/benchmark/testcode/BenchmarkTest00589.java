@@ -69,7 +69,7 @@ public class BenchmarkTest00589 extends HttpServlet {
             bar = valuesList.get(1); // get the last 'safe' value
         }
 
-        String sql = "{call " + bar + "}";
+        String sql = "{call ?}";
 
         try {
             java.sql.Connection connection =
@@ -80,6 +80,7 @@ public class BenchmarkTest00589 extends HttpServlet {
                             java.sql.ResultSet.TYPE_FORWARD_ONLY,
                             java.sql.ResultSet.CONCUR_READ_ONLY,
                             java.sql.ResultSet.CLOSE_CURSORS_AT_COMMIT);
+            statement.setString(1, bar);
             java.sql.ResultSet rs = statement.executeQuery();
             org.owasp.benchmark.helpers.DatabaseHelper.printResults(rs, sql, response);
         } catch (java.sql.SQLException e) {
