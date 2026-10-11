@@ -70,7 +70,7 @@ public class BenchmarkTest02574 extends HttpServlet {
         String bar = doSomething(request, param);
 
         try {
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA1", "SUN");
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256", "SUN");
             byte[] input = {(byte) '?'};
             Object inputParam = bar;
             if (inputParam instanceof String) input = ((String) inputParam).getBytes();

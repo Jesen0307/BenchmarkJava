@@ -105,6 +105,6 @@ public class BenchmarkTest00563 extends HttpServlet {
                                     + "<br/>");
         }
 
-        response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Weak Randomness Test java.util.Random.nextInt() executed"));
+        response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML("Weak Randomness Test java.security.SecureRandom.nextInt() executed"));
     }
 }

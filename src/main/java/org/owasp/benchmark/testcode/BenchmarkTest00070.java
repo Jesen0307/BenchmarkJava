@@ -71,7 +71,7 @@ public class BenchmarkTest00070 extends HttpServlet {
         bar = (7 * 42) - num > 200 ? "This should never happen" : param;
 
         try {
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA1", "SUN");
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256", "SUN");
             byte[] input = {(byte) '?'};
             Object inputParam = bar;
             if (inputParam instanceof String) input = ((String) inputParam).getBytes();

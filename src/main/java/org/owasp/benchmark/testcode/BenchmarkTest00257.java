@@ -61,15 +61,15 @@ public class BenchmarkTest00257 extends HttpServlet {
         //	    	(byte)0x44, (byte)0x21, (byte)0xC3, (byte)0xC3033
         //	    };
         java.security.SecureRandom random = new java.security.SecureRandom();
-        byte[] iv = random.generateSeed(8); // DES requires 8 byte keys
+        byte[] iv = random.generateSeed(16); // DES requires 8 byte keys
 
         try {
             javax.crypto.Cipher c =
-                    javax.crypto.Cipher.getInstance("DES/CBC/PKCS5Padding", "SunJCE");
+                    javax.crypto.Cipher.getInstance("AES/GCM/NoPadding", "SunJCE");
             // Prepare the cipher to encrypt
             javax.crypto.SecretKey key = javax.crypto.KeyGenerator.getInstance("DES").generateKey();
             java.security.spec.AlgorithmParameterSpec paramSpec =
-                    new javax.crypto.spec.IvParameterSpec(iv);
+                    new javax.crypto.spec.GCMParameterSpec(16 * 8, iv);
             c.init(javax.crypto.Cipher.ENCRYPT_MODE, key, paramSpec);
 
             // encrypt and store the results

@@ -48,7 +48,7 @@ public class BenchmarkTest02415 extends HttpServlet {
         String bar = doSomething(request, param);
 
         byte[] bytes = new byte[10];
-        new java.util.Random().nextBytes(bytes);
+        new java.security.SecureRandom().nextBytes(bytes);
         String rememberMeKey = org.owasp.esapi.ESAPI.encoder().encodeForBase64(bytes, true);
 
         String user = "Byron";
@@ -95,7 +95,7 @@ public class BenchmarkTest02415 extends HttpServlet {
                                     + "<br/>");
         }
 
-        response.getWriter().println("Weak Randomness Test java.util.Random.nextBytes() executed");
+        response.getWriter().println("Weak Randomness Test java.security.SecureRandom.nextBytes() executed");
     } // end doPost
 
     private static String doSomething(HttpServletRequest request, String param)

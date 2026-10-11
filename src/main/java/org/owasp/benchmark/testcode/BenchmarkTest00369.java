@@ -48,7 +48,7 @@ public class BenchmarkTest00369 extends HttpServlet {
             bar = param.substring(0, param.length() - 1);
         }
 
-        double value = java.lang.Math.random();
+        double value = new java.security.SecureRandom().nextDouble();
         String rememberMeKey = Double.toString(value).substring(2); // Trim off the 0. at the front.
 
         String user = "Doug";
@@ -95,6 +95,6 @@ public class BenchmarkTest00369 extends HttpServlet {
                                     + rememberMe.getValue()
                                     + "<br/>");
         }
-        response.getWriter().println("Weak Randomness Test java.lang.Math.random() executed");
+        response.getWriter().println("Weak Randomness Test new java.security.SecureRandom().nextDouble() executed");
     }
 }

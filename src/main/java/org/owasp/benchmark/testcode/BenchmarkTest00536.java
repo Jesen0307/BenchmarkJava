@@ -65,7 +65,7 @@ public class BenchmarkTest00536 extends HttpServlet {
         bar = (String) map28714.get("keyB-28714"); // get it back out
 
         try {
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
             byte[] input = {(byte) '?'};
             Object inputParam = bar;
             if (inputParam instanceof String) input = ((String) inputParam).getBytes();

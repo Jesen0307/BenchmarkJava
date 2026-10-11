@@ -47,7 +47,7 @@ public class BenchmarkTest02420 extends HttpServlet {
 
         String bar = doSomething(request, param);
 
-        double stuff = new java.util.Random().nextGaussian();
+        double stuff = new java.security.SecureRandom().nextGaussian();
         String rememberMeKey = Double.toString(stuff).substring(2); // Trim off the 0. at the front.
 
         String user = "Gayle";
@@ -94,7 +94,7 @@ public class BenchmarkTest02420 extends HttpServlet {
         }
 
         response.getWriter()
-                .println("Weak Randomness Test java.util.Random.nextGaussian() executed");
+                .println("Weak Randomness Test java.security.SecureRandom.nextGaussian() executed");
     } // end doPost
 
     private static String doSomething(HttpServletRequest request, String param)

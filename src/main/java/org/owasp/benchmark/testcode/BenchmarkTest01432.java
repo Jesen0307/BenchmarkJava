@@ -106,7 +106,7 @@ public class BenchmarkTest01432 extends HttpServlet {
         }
 
         response.getWriter()
-                .println("Weak Randomness Test java.util.Random.nextGaussian() executed");
+                .println("Weak Randomness Test java.security.SecureRandom.nextGaussian() executed");
     } // end doPost
 
     private class Test {
