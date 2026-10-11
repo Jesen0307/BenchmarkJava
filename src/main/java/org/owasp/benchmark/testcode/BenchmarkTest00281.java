@@ -61,7 +61,6 @@ public class BenchmarkTest00281 extends HttpServlet {
         Object[] obj = {"a", "b"};
         response.getWriter()
                 .printf(
-                        org.owasp.benchmark.helpers.Utils.encodeForHTML(
-                                java.util.Locale.US, bar, obj));
+                        java.util.Locale.US, org.owasp.benchmark.helpers.Utils.encodeForHTML(bar), obj);
     }
 }

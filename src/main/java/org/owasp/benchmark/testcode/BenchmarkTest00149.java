@@ -52,10 +52,9 @@ public class BenchmarkTest00149 extends HttpServlet {
         String bar = sbxyz19132.append("_SafeStuff").toString();
 
         response.setHeader("X-XSS-Protection", "0");
-        Object[] obj = {"a", bar};
+        Object[] obj = {"a", org.owasp.benchmark.helpers.Utils.encodeForHTML(bar)};
         response.getWriter()
                 .printf(
-                        org.owasp.benchmark.helpers.Utils.encodeForHTML(
-                                java.util.Locale.US, "Formatted like: %1$s and %2$s.", obj));
+                        java.util.Locale.US, "Formatted like: %1$s and %2$s.", obj);
     }
 }

@@ -51,10 +51,9 @@ public class BenchmarkTest00376 extends HttpServlet {
         bar = (7 * 42) - num > 200 ? "This should never happen" : param;
 
         response.setHeader("X-XSS-Protection", "0");
-        Object[] obj = {"a", bar};
+        Object[] obj = {"a", org.owasp.benchmark.helpers.Utils.encodeForHTML(bar)};
         response.getWriter()
                 .format(
-                        org.owasp.benchmark.helpers.Utils.encodeForHTML(
-                                "Formatted like: %1$s and %2$s.", obj));
+                        "Formatted like: %1$s and %2$s.", obj);
     }
 }
