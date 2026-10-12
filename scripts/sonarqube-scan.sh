@@ -153,10 +153,10 @@ except Exception:
 done
 
 # Export real findings so the downstream processor gets actual data instead of
-# an empty placeholder. Issues are the priority; hotspots are best-effort (the
-# scan token may not have the privilege to list them).
+# an empty placeholder. Only SonarQube security issues are exported; hotspots
+# are intentionally excluded.
 if [ "$TASK_SUCCEEDED" = "1" ]; then
-    echo "[sonarqube-scan] Fetching findings from SonarQube..."
+    echo "[sonarqube-scan] Fetching security issues from SonarQube..."
     python3 - "$HOST_URL" "$TOKEN" "$PROJECT_KEY" "$OUTPUT_DIR/sonar_raw.json" <<'PYEOF'
 import json
 import sys
@@ -164,7 +164,7 @@ import urllib.request
 
 host, token, project_key, out_path = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 page_size = 500
-result = {"issues": [], "hotspots": []}
+result = {"issues": []}
 
 
 def api_request(path):
@@ -174,6 +174,15 @@ def api_request(path):
         f"{token}:".encode()).decode())
     with urllib.request.urlopen(req, timeout=60) as resp:
         return json.load(resp)
+
+
+def is_security_issue(issue):
+    # MQR (multi-quality-rule) mode: keep only SECURITY-impacted issues.
+    impacts = issue.get("impacts")
+    if impacts:
+        return any((i.get("softwareQuality") or "").upper() == "SECURITY" for i in impacts)
+    # Legacy mode: security issues are the VULNERABILITY type (hotspots excluded).
+    return (issue.get("type") or "").upper() == "VULNERABILITY"
 
 
 # Issues (paged) - only security issues
@@ -187,6 +196,8 @@ while True:
         break
     issues = data.get("issues", [])
     for i in issues:
+        if not is_security_issue(i):
+            continue
         result["issues"].append({
             "key": i.get("key"),
             "rule": i.get("rule"),
