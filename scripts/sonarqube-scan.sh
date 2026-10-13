@@ -67,14 +67,11 @@ fi
 
 # Provide a compile classpath so Java analysis is precise instead of degrading to
 # "unresolved imports". Best-effort: if we cannot build one, warn but continue.
-# NOTE: sonar.java.libraries expects a COMMA-separated list of jars/dirs, not a
-# path to a file and not a colon-separated string, so we convert to commas here.
 LIB_CLASSPATH=""
 if [ -f "$WORKSPACE_ROOT/build/runtimeClasspath.txt" ]; then
-    # Maven's dependency:build-classpath writes a colon-separated list.
-    LIB_CLASSPATH=$(tr -d '\n' < "$WORKSPACE_ROOT/build/runtimeClasspath.txt" | tr ':' ',')
+    LIB_CLASSPATH="build/runtimeClasspath.txt"
 elif [ -d "$WORKSPACE_ROOT/build" ]; then
-    LIB_CLASSPATH=$(find "$WORKSPACE_ROOT/build" -name '*.jar' 2>/dev/null | paste -sd, -)
+    LIB_CLASSPATH=$(find "$WORKSPACE_ROOT/build" -name '*.jar' 2>/dev/null | tr '\n' ':')
 fi
 if [ -n "${LIB_CLASSPATH:-}" ]; then
     SCAN_ARGS+=(-Dsonar.java.libraries="$LIB_CLASSPATH")
@@ -162,22 +159,40 @@ done
 if [ "$TASK_SUCCEEDED" = "1" ]; then
     echo "[sonarqube-scan] Fetching open security issues from SonarQube..."
     python3 - "$HOST_URL" "$TOKEN" "$PROJECT_KEY" "$OUTPUT_DIR/sonar_raw.json" <<'PYEOF'
+import base64
 import json
 import sys
+import urllib.parse
 import urllib.request
 
 host, token, project_key, out_path = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
-page_size = 500
-result = {"issues": []}
+PAGE_SIZE = 500
+MAX_RESULTS = 10000  # SonarQube search API hard cap: page * page_size must stay <= 10000
+
+BASE_PARAMS = {
+    "componentKeys": project_key,
+    "impactSoftwareQualities": "SECURITY",
+    "issueStatuses": "OPEN,CONFIRMED",
+}
 
 
-def api_request(path):
-    url = f"{host}{path}"
+def fail(msg):
+    print(f"[sonarqube-scan] ERROR: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def api_request(params):
+    url = f"{host}/api/issues/search?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url)
-    req.add_header("Authorization", "Basic " + __import__("base64").b64encode(
-        f"{token}:".encode()).decode())
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return json.load(resp)
+    req.add_header("Authorization", "Basic " + base64.b64encode(f"{token}:".encode()).decode())
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return json.load(resp)
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")[:500]
+        fail(f"HTTP {e.code} for {url}: {body}")
+    except Exception as e:
+        fail(f"request failed for {url}: {e}")
 
 
 def is_security_issue(issue):
@@ -189,36 +204,62 @@ def is_security_issue(issue):
     return (issue.get("type") or "").upper() == "VULNERABILITY"
 
 
-# Issues (paged) - only OPEN/CONFIRMED security issues, matching the dashboard
-page = 1
-while True:
-    try:
-        data = api_request(
-            f"/api/issues/search?componentKeys={project_key}"
-            f"&impactSoftwareQualities=SECURITY"
-            f"&issueStatuses=OPEN,CONFIRMED"
-            f"&ps={page_size}&p={page}")
-    except Exception as e:
-        print(f"[sonarqube-scan] WARNING: could not fetch issues: {e}", file=sys.stderr)
-        break
-    issues = data.get("issues", [])
-    for i in issues:
-        if not is_security_issue(i):
-            continue
-        result["issues"].append({
-            "key": i.get("key"),
-            "rule": i.get("rule"),
-            "component": i.get("component"),
-            "severity": i.get("severity"),
-            "status": i.get("issueStatus") or i.get("status"),
-            "message": i.get("message"),
-            "line": i.get("line"),
-            "textRange": i.get("textRange"),
-        })
-    total = data.get("total", 0)
-    if not issues or page * page_size >= total:
-        break
-    page += 1
+def fetch_all(extra_params):
+    """Page through one slice of results. Fails if the slice exceeds the API cap."""
+    collected = []
+    page = 1
+    while True:
+        data = api_request({**BASE_PARAMS, **extra_params, "ps": PAGE_SIZE, "p": page})
+        total = data.get("total", 0)
+        if total > MAX_RESULTS:
+            fail(f"slice {extra_params or 'ALL'} has {total} issues, above the {MAX_RESULTS} API cap")
+        issues = data.get("issues", [])
+        collected.extend(issues)
+        if not issues or page * PAGE_SIZE >= total:
+            return collected
+        page += 1
+
+
+# 1) Ask how many open security issues exist before paging anything.
+probe = api_request({**BASE_PARAMS, "ps": 1, "facets": "rules"})
+grand_total = probe.get("total", 0)
+print(f"[sonarqube-scan] Server reports {grand_total} open security issues")
+
+if grand_total <= MAX_RESULTS:
+    raw = fetch_all({})
+else:
+    # 2) Over the 10,000 cap: fetch one rule at a time so every slice stays under it.
+    facets = {f["property"]: f["values"] for f in probe.get("facets", [])}
+    rule_values = facets.get("rules", [])
+    if sum(v["count"] for v in rule_values) != grand_total:
+        fail("rules facet does not cover all issues; cannot slice safely under the 10,000 cap")
+    print(f"[sonarqube-scan] Over the {MAX_RESULTS} cap, fetching per rule ({len(rule_values)} rules)")
+    raw = []
+    for v in rule_values:
+        raw.extend(fetch_all({"rules": v["val"]}))
+
+# 3) De-duplicate by key and keep security issues only.
+seen = set()
+result = {"total_reported": grand_total, "issues": []}
+for i in raw:
+    key = i.get("key")
+    if key in seen or not is_security_issue(i):
+        continue
+    seen.add(key)
+    result["issues"].append({
+        "key": key,
+        "rule": i.get("rule"),
+        "component": i.get("component"),
+        "severity": i.get("severity"),
+        "status": i.get("issueStatus") or i.get("status"),
+        "message": i.get("message"),
+        "line": i.get("line"),
+        "textRange": i.get("textRange"),
+    })
+
+if len(result["issues"]) != grand_total:
+    print(f"[sonarqube-scan] WARNING: exported {len(result['issues'])} but server reported "
+          f"{grand_total}", file=sys.stderr)
 
 with open(out_path, "w") as f:
     json.dump(result, f)
