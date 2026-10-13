@@ -67,11 +67,14 @@ fi
 
 # Provide a compile classpath so Java analysis is precise instead of degrading to
 # "unresolved imports". Best-effort: if we cannot build one, warn but continue.
+# NOTE: sonar.java.libraries expects a COMMA-separated list of jars/dirs, not a
+# path to a file and not a colon-separated string, so we convert to commas here.
 LIB_CLASSPATH=""
 if [ -f "$WORKSPACE_ROOT/build/runtimeClasspath.txt" ]; then
-    LIB_CLASSPATH="build/runtimeClasspath.txt"
+    # Maven's dependency:build-classpath writes a colon-separated list.
+    LIB_CLASSPATH=$(tr -d '\n' < "$WORKSPACE_ROOT/build/runtimeClasspath.txt" | tr ':' ',')
 elif [ -d "$WORKSPACE_ROOT/build" ]; then
-    LIB_CLASSPATH=$(find "$WORKSPACE_ROOT/build" -name '*.jar' 2>/dev/null | tr '\n' ':')
+    LIB_CLASSPATH=$(find "$WORKSPACE_ROOT/build" -name '*.jar' 2>/dev/null | paste -sd, -)
 fi
 if [ -n "${LIB_CLASSPATH:-}" ]; then
     SCAN_ARGS+=(-Dsonar.java.libraries="$LIB_CLASSPATH")
@@ -153,10 +156,11 @@ except Exception:
 done
 
 # Export real findings so the downstream processor gets actual data instead of
-# an empty placeholder. Only SonarQube security issues are exported; hotspots
-# are intentionally excluded.
+# an empty placeholder. Only SonarQube security issues that are still open
+# (status OPEN or CONFIRMED, same as the dashboard) are exported; resolved
+# issues (FIXED, FALSE_POSITIVE, ACCEPTED) and hotspots are intentionally excluded.
 if [ "$TASK_SUCCEEDED" = "1" ]; then
-    echo "[sonarqube-scan] Fetching security issues from SonarQube..."
+    echo "[sonarqube-scan] Fetching open security issues from SonarQube..."
     python3 - "$HOST_URL" "$TOKEN" "$PROJECT_KEY" "$OUTPUT_DIR/sonar_raw.json" <<'PYEOF'
 import json
 import sys
@@ -185,12 +189,15 @@ def is_security_issue(issue):
     return (issue.get("type") or "").upper() == "VULNERABILITY"
 
 
-# Issues (paged) - only security issues
+# Issues (paged) - only OPEN/CONFIRMED security issues, matching the dashboard
 page = 1
 while True:
     try:
         data = api_request(
-            f"/api/issues/search?componentKeys={project_key}&impactSoftwareQualities=SECURITY&ps={page_size}&p={page}")
+            f"/api/issues/search?componentKeys={project_key}"
+            f"&impactSoftwareQualities=SECURITY"
+            f"&issueStatuses=OPEN,CONFIRMED"
+            f"&ps={page_size}&p={page}")
     except Exception as e:
         print(f"[sonarqube-scan] WARNING: could not fetch issues: {e}", file=sys.stderr)
         break
@@ -203,6 +210,7 @@ while True:
             "rule": i.get("rule"),
             "component": i.get("component"),
             "severity": i.get("severity"),
+            "status": i.get("issueStatus") or i.get("status"),
             "message": i.get("message"),
             "line": i.get("line"),
             "textRange": i.get("textRange"),
@@ -214,7 +222,7 @@ while True:
 
 with open(out_path, "w") as f:
     json.dump(result, f)
-print(f"[sonarqube-scan] Exported {len(result['issues'])} security issues to {out_path}")
+print(f"[sonarqube-scan] Exported {len(result['issues'])} open security issues to {out_path}")
 PYEOF
 else
     echo "[sonarqube-scan] Analysis did not complete; no findings exported." >&2
