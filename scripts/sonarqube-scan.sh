@@ -41,6 +41,8 @@ SCAN_ARGS=(
     -Dsonar.projectKey="$PROJECT_KEY"
     -Dsonar.projectName="$PROJECT_KEY"
     -Dsonar.sources=src
+    # Analyze only the OWASP Benchmark testcode (everything else under src is skipped).
+    -Dsonar.inclusions=**/org/owasp/benchmark/testcode/**
     -Dsonar.host.url="$HOST_URL"
     -Dsonar.token="$TOKEN"
     # Use the JVM that launched the scanner instead of provisioning a separate
