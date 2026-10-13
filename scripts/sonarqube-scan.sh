@@ -2,13 +2,20 @@
 set -euo pipefail
 
 # SonarQube Scan Script for SAST Pipeline
-# Usage: ./sonarqube-scan.sh <workspace_root> <project_key> <host_url> <token> [output_dir] [java_binaries]
-#   java_binaries = relative path to compiled classes (e.g. target/classes) for
-#                   the SonarQube Java analyzer. Optional.
+# Usage: ./newestsonar.sh <workspace_root> <project_key> <host_url> <token> [output_dir] [java_binaries]
 #
-# Runs the SonarScanner CLI natively on the same filesystem as the workspace —
-# no Docker, no mounts. The CLI must be installed on PATH (see the
-# 'Install Dependencies' stage in the Jenkinsfile).
+# Changes vs. sonarqube-scan.sh:
+#   1) FIX classpath: sonar.java.libraries expects a comma-separated list of
+#      JAR/ZIP paths (or dirs/globs), NOT the path to a text file that CONTAINS
+#      a classpath. The old code passed "build/runtimeClasspath.txt" (a file) and
+#      its fallback joined jars with ':' (wrong separator). Both are corrected:
+#      the file is read and its ':' separators are turned into ','.
+#   2) FIX export cap: the old export fails/truncates above 10,000 issues
+#      (SonarQube's /api/issues/search hard cap is page * page_size <= 10000) and
+#      its per-rule facet slicing aborts when the rules facet is truncated (>100
+#      rules). This version slices recursively: by rule, then by severity, and
+#      enumerates ALL Java rule keys via /api/rules/search when the facet is
+#      incomplete, so it exports an arbitrarily large result set (e.g. 17k).
 
 WORKSPACE_ROOT="${1:-.}"
 PROJECT_KEY="${2:-}"
@@ -67,13 +74,18 @@ else
     echo "[sonarqube-scan] WARNING: no compiled Java classes found. SonarQube Java analysis requires the project to be built first (e.g. ./gradlew classes)." >&2
 fi
 
-# Provide a compile classpath so Java analysis is precise instead of degrading to
-# "unresolved imports". Best-effort: if we cannot build one, warn but continue.
+# Provide the dependency JARs to the Java analyzer so it does not degrade to
+# "unresolved imports/types". sonar.java.libraries wants a COMMA-separated list
+# of jar/zip paths (dirs and globs are also allowed) — NOT a path to a file that
+# contains a classpath. Maven's dependency:build-classpath writes the classpath
+# with the platform separator (':' on Linux), so convert it to commas.
 LIB_CLASSPATH=""
 if [ -f "$WORKSPACE_ROOT/build/runtimeClasspath.txt" ]; then
-    LIB_CLASSPATH="build/runtimeClasspath.txt"
+    LIB_CLASSPATH=$(tr ':' ',' < "$WORKSPACE_ROOT/build/runtimeClasspath.txt" | tr -d '\n')
+    ENTRIES=$(printf '%s' "$LIB_CLASSPATH" | tr ',' '\n' | wc -l | tr -d ' ')
+    echo "[sonarqube-scan] Using $ENTRIES java libraries from build/runtimeClasspath.txt"
 elif [ -d "$WORKSPACE_ROOT/build" ]; then
-    LIB_CLASSPATH=$(find "$WORKSPACE_ROOT/build" -name '*.jar' 2>/dev/null | tr '\n' ':')
+    LIB_CLASSPATH=$(find "$WORKSPACE_ROOT/build" -name '*.jar' 2>/dev/null | paste -sd, -)
 fi
 if [ -n "${LIB_CLASSPATH:-}" ]; then
     SCAN_ARGS+=(-Dsonar.java.libraries="$LIB_CLASSPATH")
@@ -164,12 +176,14 @@ if [ "$TASK_SUCCEEDED" = "1" ]; then
 import base64
 import json
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
 host, token, project_key, out_path = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 PAGE_SIZE = 500
 MAX_RESULTS = 10000  # SonarQube search API hard cap: page * page_size must stay <= 10000
+SEVERITIES = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO"]
 
 BASE_PARAMS = {
     "componentKeys": project_key,
@@ -183,8 +197,8 @@ def fail(msg):
     sys.exit(1)
 
 
-def api_request(params):
-    url = f"{host}/api/issues/search?" + urllib.parse.urlencode(params)
+def api_request(path, params):
+    url = f"{host}{path}?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url)
     req.add_header("Authorization", "Basic " + base64.b64encode(f"{token}:".encode()).decode())
     try:
@@ -206,15 +220,19 @@ def is_security_issue(issue):
     return (issue.get("type") or "").upper() == "VULNERABILITY"
 
 
-def fetch_all(extra_params):
-    """Page through one slice of results. Fails if the slice exceeds the API cap."""
+def probe_total(extra):
+    return api_request("/api/issues/search", {**BASE_PARAMS, **extra, "ps": 1}).get("total", 0)
+
+
+def fetch_all(extra):
+    """Page one slice. Must stay under the 10,000 cap or the caller must slice more."""
     collected = []
     page = 1
     while True:
-        data = api_request({**BASE_PARAMS, **extra_params, "ps": PAGE_SIZE, "p": page})
+        data = api_request("/api/issues/search", {**BASE_PARAMS, **extra, "ps": PAGE_SIZE, "p": page})
         total = data.get("total", 0)
         if total > MAX_RESULTS:
-            fail(f"slice {extra_params or 'ALL'} has {total} issues, above the {MAX_RESULTS} API cap")
+            fail(f"slice {extra or 'ALL'} still has {total} issues, above the {MAX_RESULTS} API cap")
         issues = data.get("issues", [])
         collected.extend(issues)
         if not issues or page * PAGE_SIZE >= total:
@@ -222,23 +240,60 @@ def fetch_all(extra_params):
         page += 1
 
 
-# 1) Ask how many open security issues exist before paging anything.
-probe = api_request({**BASE_PARAMS, "ps": 1, "facets": "rules"})
+def all_java_rule_keys():
+    """Enumerate every Java rule key (pageable, unlike the issues facet)."""
+    keys = []
+    page = 1
+    while True:
+        data = api_request("/api/rules/search", {"languages": "java", "ps": 500, "p": page, "f": "key"})
+        rules = data.get("rules", [])
+        keys.extend(r.get("key") for r in rules if r.get("key"))
+        total = data.get("total", 0)
+        if not rules or page * 500 >= total:
+            break
+        page += 1
+    return keys
+
+
+def slice_fetch(extra):
+    """Return all issues for a filter, slicing by severity if it exceeds the cap."""
+    total = probe_total(extra)
+    if total == 0:
+        return []
+    if total <= MAX_RESULTS:
+        return fetch_all(extra)
+    if "severities" not in extra:
+        out = []
+        for sev in SEVERITIES:
+            out.extend(slice_fetch({**extra, "severities": sev}))
+        return out
+    fail(f"cannot slice further: filter {extra} has {total} issues, above {MAX_RESULTS}")
+
+
+# 1) How many open security issues are there, and which rules?
+probe = api_request("/api/issues/search", {**BASE_PARAMS, "ps": 1, "facets": "rules"})
 grand_total = probe.get("total", 0)
 print(f"[sonarqube-scan] Server reports {grand_total} open security issues")
+
+facets = {f["property"]: f["values"] for f in probe.get("facets", [])}
+facet_rules = facets.get("rules", [])
+facet_sum = sum(v["count"] for v in facet_rules)
 
 if grand_total <= MAX_RESULTS:
     raw = fetch_all({})
 else:
-    # 2) Over the 10,000 cap: fetch one rule at a time so every slice stays under it.
-    facets = {f["property"]: f["values"] for f in probe.get("facets", [])}
-    rule_values = facets.get("rules", [])
-    if sum(v["count"] for v in rule_values) != grand_total:
-        fail("rules facet does not cover all issues; cannot slice safely under the 10,000 cap")
-    print(f"[sonarqube-scan] Over the {MAX_RESULTS} cap, fetching per rule ({len(rule_values)} rules)")
+    # 2) Over the 10,000 cap: slice per rule. The rules facet is truncated to
+    #    ~100 values, so enumerate all Java rules when the facet is incomplete.
+    if facet_rules and facet_sum == grand_total:
+        rule_keys = [v["val"] for v in facet_rules]
+        print(f"[sonarqube-scan] Over {MAX_RESULTS}; slicing by {len(rule_keys)} rules (facet complete)")
+    else:
+        rule_keys = sorted(set(all_java_rule_keys()) | {v["val"] for v in facet_rules})
+        print(f"[sonarqube-scan] Over {MAX_RESULTS}; facet partial ({facet_sum}/{grand_total}); "
+              f"slicing by {len(rule_keys)} Java rules")
     raw = []
-    for v in rule_values:
-        raw.extend(fetch_all({"rules": v["val"]}))
+    for rk in rule_keys:
+        raw.extend(slice_fetch({"rules": rk}))
 
 # 3) De-duplicate by key and keep security issues only.
 seen = set()
